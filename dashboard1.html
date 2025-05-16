@@ -591,8 +591,8 @@
       }
 
       // MQTT Configuration
-      const broker = "broker.emqx.io";
-      const port = 8083;
+      const broker = "test.mosquitto.org";
+      const port = 8081; // WebSocket with SSL
       const clientId = "dashboard_" + Math.random().toString(16).substr(2, 8);
       const topicData = "pedestrian_crossing/data";
       const topicControl = "pedestrian_crossing/control";
@@ -605,14 +605,26 @@
       // Connect to MQTT Broker
       client.connect({
         onSuccess: onConnect,
-        useSSL: true
+        useSSL: true,
+        onFailure: (err) => {
+          console.error("MQTT Connection Failed:", err);
+          connectionStatus.textContent = "Error: " + err.errorMessage;
+          connectionStatus.style.color = "red";
+        }
       });
 
       function onConnect() {
         connectionStatus.textContent = "Connected";
         connectionStatus.style.color = "green";
-        client.subscribe(topicData);
-        console.log("Connected to " + broker + " and subscribed to " + topicData);
+        client.subscribe(topicData, {
+          onSuccess: () => {
+            console.log("Subscribed to " + topicData);
+          },
+          onFailure: (err) => {
+            console.error("Subscription Failed:", err);
+          }
+        });
+        console.log("Connected to " + broker + " on port " + port);
       }
 
       function onConnectionLost(responseObject) {
@@ -624,24 +636,28 @@
       }
 
       function onMessageArrived(message) {
-        const telemetry = JSON.parse(message.payloadString);
-        console.log("Received: ", telemetry);
+        try {
+          const telemetry = JSON.parse(message.payloadString);
+          console.log("Received: ", telemetry);
 
-        const state = telemetry.redLedOn ? "cars_go" : "pedestrians_cross";
-        addDataPoint(new Date(), state);
-        updateSystemState(state);
+          const state = telemetry.redLedOn ? "cars_go" : "pedestrians_cross";
+          addDataPoint(new Date(), state);
+          updateSystemState(state);
 
-        currentMode.textContent = telemetry.mode;
-        autoModeSwitch.checked = telemetry.mode === "automatic";
-        modeLabel.textContent = telemetry.mode === "automatic" ? "Automatic Mode" : "Manual Mode";
-        lastButtonPress.textContent = telemetry.lastButtonPress;
+          currentMode.textContent = telemetry.mode;
+          autoModeSwitch.checked = telemetry.mode === "automatic";
+          modeLabel.textContent = telemetry.mode === "automatic" ? "Automatic Mode" : "Manual Mode";
+          lastButtonPress.textContent = telemetry.lastButtonPress;
 
-        const uptimeSeconds = Math.floor(telemetry.systemUptime / 1000);
-        const hours = Math.floor(uptimeSeconds / 3600);
-        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-        const seconds = uptimeSeconds % 60;
-        systemUptime.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        currentDate.textContent = telemetry.currentDate;
+          const uptimeSeconds = Math.floor(telemetry.systemUptime / 1000);
+          const hours = Math.floor(uptimeSeconds / 3600);
+          const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+          const seconds = uptimeSeconds % 60;
+          systemUptime.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          currentDate.textContent = telemetry.currentDate;
+        } catch (e) {
+          console.error("Error parsing MQTT message:", e);
+        }
       }
 
       function sendCommand(command) {
