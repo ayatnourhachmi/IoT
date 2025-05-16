@@ -540,14 +540,10 @@
     })
     .then(response => response.json())
     .then(data => {
-      console.log("Node-RED Response:", data);
-
-      // Visual update
       const state = data.redLedOn ? "cars_go" : "pedestrians_cross";
       updateSystemState(state);
       addDataPoint(new Date(), state);
 
-      // Update UI text
       connectionStatus.textContent = "Connected";
       connectionStatus.style.color = "green";
       currentMode.textContent = data.mode;
@@ -586,13 +582,43 @@
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  // Init system state & chart
+  // Init state + chart
   updateSystemState("cars_go");
   const now = new Date();
   addDataPoint(new Date(now.getTime() - 60000), "cars_go");
   addDataPoint(new Date(now.getTime() - 50000), "pedestrians_cross");
   addDataPoint(new Date(now.getTime() - 40000), "cars_go");
   addDataPoint(new Date(now.getTime() - 10000), "cars_go");
+
+  // 🔁 Poll Node-RED every 3s
+  setInterval(() => {
+    fetch("https://team-ayat-nour-hachmi-aynour-ee321dbe.flowfuse.cloud/api/state")
+      .then(res => res.json())
+      .then(data => {
+        const state = data.redLedOn ? "cars_go" : "pedestrians_cross";
+        updateSystemState(state);
+        addDataPoint(new Date(), state);
+
+        connectionStatus.textContent = "Connected";
+        connectionStatus.style.color = "green";
+        currentMode.textContent = data.mode;
+        autoModeSwitch.checked = data.mode === "automatic";
+        modeLabel.textContent = data.mode === "automatic" ? "Automatic Mode" : "Manual Mode";
+        lastButtonPress.textContent = data.lastButtonPress;
+        currentDate.textContent = data.currentDate;
+
+        const sec = Math.floor(data.systemUptime / 1000);
+        const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+        const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+        const s = (sec % 60).toString().padStart(2, '0');
+        systemUptime.textContent = `${h}:${m}:${s}`;
+      })
+      .catch(err => {
+        console.error("Polling failed:", err);
+        connectionStatus.textContent = "Disconnected";
+        connectionStatus.style.color = "red";
+      });
+  }, 3000);
 </script>
 
 
