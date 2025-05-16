@@ -293,12 +293,22 @@
             </div>
             <div class="card-body">
               <div class="row">
-                <div class="col-md-6 text-center mb-4">
-                  <h5 class="mb-3">Manual Crossing Request</h5>
-                  <button id="manualCrossingBtn" class="btn btn-crossing">
-                    <i class="fas fa-walking me-2"></i>Allow Pedestrians to Cross
-                  </button>
-                </div>
+                
+<div class="col-md-6 text-center mb-4">
+  <h5 class="mb-3">Manual Crossing Request</h5>
+  <button id="manualCrossingBtn" class="btn btn-crossing">
+    <i class="fas fa-walking me-2"></i>Allow Pedestrians to Cross
+  </button>
+  <div class="mt-3">
+    <button id="forceRedBtn" class="btn btn-danger btn-crossing">
+      <i class="fas fa-hand-paper me-2"></i>Force Red
+    </button>
+    <button id="forceGreenBtn" class="btn btn-success btn-crossing">
+      <i class="fas fa-walking me-2"></i>Force Green
+    </button>
+  </div>
+</div>
+
                 <div class="col-md-6">
                   <h5 class="mb-3">System Mode</h5>
                   <div class="form-check form-switch mb-3">
@@ -614,6 +624,16 @@
       addDataPoint(new Date(now.getTime() - 50000), 'pedestrians_cross');
       addDataPoint(new Date(now.getTime() - 40000), 'cars_go');
       addDataPoint(new Date(now.getTime() - 10000), 'cars_go');
+
+      
+document.getElementById('forceRedBtn').onclick = () => {
+  sendCommand('force_red');
+};
+
+document.getElementById('forceGreenBtn').onclick = () => {
+  sendCommand('force_green');
+};
+
     </script>
   </body>
 </html>
