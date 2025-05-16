@@ -394,7 +394,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <script>
-  // Chart Initialization
   const ctx = document.getElementById('stateChart');
   const stateChart = new Chart(ctx, {
     type: 'line',
@@ -418,57 +417,42 @@
           type: "time",
           time: {
             unit: "second",
-            displayFormats: {
-              second: 'HH:mm:ss'
-            }
+            displayFormats: { second: 'HH:mm:ss' }
           },
-          title: {
-            display: true,
-            text: 'Time'
-          },
-          grid: {
-            display: true,
-            color: '#f0f0f0'
-          }
+          title: { display: true, text: 'Time' },
+          grid: { color: '#f0f0f0' }
         },
         y: {
-          beginAtZero: true,
           min: 0,
           max: 1,
           ticks: {
             stepSize: 1,
-            callback: value => value === 0 ? "Cars Go" : "Pedestrians Cross"
+            callback: v => v === 0 ? "Cars Go" : "Pedestrians Cross"
           },
-          grid: {
-            display: true,
-            color: '#f0f0f0'
-          }
+          grid: { color: '#f0f0f0' }
         }
       },
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: context => context.raw === 0 ? "Cars Go" : "Pedestrians Cross"
+            label: ctx => ctx.raw === 0 ? "Cars Go" : "Pedestrians Cross"
           }
         }
       }
     }
   });
 
-  function addDataPoint(newTime, newState) {
-    stateChart.data.labels.push(newTime);
-    stateChart.data.datasets.forEach(dataset => {
-      dataset.data.push(newState === "pedestrians_cross" ? 1 : 0);
-    });
+  function addDataPoint(time, state) {
+    stateChart.data.labels.push(time);
+    stateChart.data.datasets[0].data.push(state === "pedestrians_cross" ? 1 : 0);
     if (stateChart.data.labels.length > 20) {
       stateChart.data.labels.shift();
-      stateChart.data.datasets.forEach(dataset => dataset.data.shift());
+      stateChart.data.datasets[0].data.shift();
     }
     stateChart.update();
   }
 
-  // Get HTML elements
   const redLight = document.getElementById('redLight');
   const greenLight = document.getElementById('greenLight');
   const buzzerContainer = document.getElementById('buzzerContainer');
@@ -484,13 +468,8 @@
   const currentDate = document.getElementById('currentDate');
   const connectionStatus = document.getElementById('connectionStatus');
 
-  let startTime = new Date();
   let countdown = null;
   let countdownValue = 0;
-
-  currentDate.textContent = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
 
   function updateTimeRemaining() {
     if (countdownValue > 0) {
@@ -549,11 +528,6 @@
     }
 
     setTimeout(() => statusBadge.classList.remove('fade-in'), 500);
-    const uptimeSeconds = Math.floor((new Date() - startTime) / 1000);
-    const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
-    const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
-    const s = (uptimeSeconds % 60).toString().padStart(2, '0');
-    systemUptime.textContent = `${h}:${m}:${s}`;
   }
 
   const nodeRedUrl = "https://team-ayat-nour-hachmi-aynour-ee321dbe.flowfuse.cloud/api/control";
@@ -567,8 +541,26 @@
     .then(response => response.json())
     .then(data => {
       console.log("Node-RED Response:", data);
+
+      // Visual update
+      const state = data.redLedOn ? "cars_go" : "pedestrians_cross";
+      updateSystemState(state);
+      addDataPoint(new Date(), state);
+
+      // Update UI text
       connectionStatus.textContent = "Connected";
       connectionStatus.style.color = "green";
+      currentMode.textContent = data.mode;
+      autoModeSwitch.checked = data.mode === "automatic";
+      modeLabel.textContent = data.mode === "automatic" ? "Automatic Mode" : "Manual Mode";
+      lastButtonPress.textContent = data.lastButtonPress;
+      currentDate.textContent = data.currentDate;
+
+      const sec = Math.floor(data.systemUptime / 1000);
+      const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      systemUptime.textContent = `${h}:${m}:${s}`;
     })
     .catch(err => {
       console.error("HTTP Error:", err);
@@ -585,18 +577,16 @@
   };
 
   autoModeSwitch.onchange = () => {
-    if (autoModeSwitch.checked) {
-      modeLabel.textContent = "Automatic Mode";
-      currentMode.textContent = "Automatic";
-      sendCommand({ command: "mode_auto" });
-    } else {
-      modeLabel.textContent = "Manual Mode";
-      currentMode.textContent = "Manual";
-      sendCommand({ command: "mode_manual" });
-    }
+    const mode = autoModeSwitch.checked ? "mode_auto" : "mode_manual";
+    sendCommand({ command: mode });
   };
 
-  // Initialize system state
+  // Initialize current date
+  currentDate.textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  // Init system state & chart
   updateSystemState("cars_go");
   const now = new Date();
   addDataPoint(new Date(now.getTime() - 60000), "cars_go");
@@ -604,6 +594,7 @@
   addDataPoint(new Date(now.getTime() - 40000), "cars_go");
   addDataPoint(new Date(now.getTime() - 10000), "cars_go");
 </script>
+
 
   </body>
 </html>
