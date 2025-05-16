@@ -472,15 +472,23 @@
   let countdownValue = 0;
 
   function updateTimeRemaining() {
-    if (countdownValue > 0) {
-      countdownValue--;
-      timeRemaining.textContent = countdownValue + " sec";
-    } else {
-      timeRemaining.textContent = "--";
-      clearInterval(countdown);
-      countdown = null;
+  if (countdownValue > 0) {
+    countdownValue--;
+    timeRemaining.textContent = countdownValue + " sec";
+  } else {
+    timeRemaining.textContent = "--";
+    clearInterval(countdown);
+    countdown = null;
+
+    // Toggle state if in automatic mode
+    if (autoModeSwitch.checked) {
+      const newState = statusBadge.textContent === "Pedestrians Cross" ? "cars_go" : "pedestrians_cross";
+      updateSystemState(newState);
+      addDataPoint(new Date(), newState);
     }
   }
+}
+
 
   function setRedLightOn() {
     redLight.classList.add('active');
