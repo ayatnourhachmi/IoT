@@ -393,7 +393,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
-   <script>
+    <script>
   const ctx = document.getElementById('stateChart');
   const stateChart = new Chart(ctx, {
     type: 'line',
@@ -560,7 +560,7 @@
       const h = Math.floor(sec / 3600).toString().padStart(2, '0');
       const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
       const s = (sec % 60).toString().padStart(2, '0');
-      systemUptime.textContent = ${h}:${m}:${s};
+      systemUptime.textContent = `${h}:${m}:${s}`;
     })
     .catch(err => {
       console.error("HTTP Error:", err);
@@ -594,6 +594,7 @@
   addDataPoint(new Date(now.getTime() - 40000), "cars_go");
   addDataPoint(new Date(now.getTime() - 10000), "cars_go");
 </script>
+
 
 
   </body>
