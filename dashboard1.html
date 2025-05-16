@@ -394,312 +394,216 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <script>
-      // Chart Initialization
-      const ctx = document.getElementById('stateChart');
-      const stateChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: [],
-          datasets: [{
-            label: 'System State',
-            data: [],
-            fill: false,
-            borderColor: '#396afc',
-            backgroundColor: '#396afc',
-            tension: 0.1,
-            stepped: true
-          }]
+  // Chart Initialization
+  const ctx = document.getElementById('stateChart');
+  const stateChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'System State',
+        data: [],
+        fill: false,
+        borderColor: '#396afc',
+        backgroundColor: '#396afc',
+        tension: 0.1,
+        stepped: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: "time",
+          time: {
+            unit: "second",
+            displayFormats: {
+              second: 'HH:mm:ss'
+            }
+          },
+          title: {
+            display: true,
+            text: 'Time'
+          },
+          grid: {
+            display: true,
+            color: '#f0f0f0'
+          }
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              type: "time",
-              time: {
-                unit: "second",
-                displayFormats: {
-                  second: 'HH:mm:ss'
-                }
-              },
-              title: {
-                display: true,
-                text: 'Time'
-              },
-              grid: {
-                display: true,
-                drawBorder: true,
-                drawOnChartArea: true,
-                color: '#f0f0f0'
-              }
-            },
-            y: {
-              beginAtZero: true,
-              min: 0,
-              max: 1,
-              ticks: {
-                stepSize: 1,
-                callback: function(value) {
-                  return value === 0 ? "Cars Go" : "Pedestrians Cross";
-                }
-              },
-              grid: {
-                display: true,
-                drawBorder: true,
-                color: '#f0f0f0'
-              }
-            }
+        y: {
+          beginAtZero: true,
+          min: 0,
+          max: 1,
+          ticks: {
+            stepSize: 1,
+            callback: value => value === 0 ? "Cars Go" : "Pedestrians Cross"
           },
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return context.raw === 0 ? "Cars Go" : "Pedestrians Cross";
-                }
-              }
-            }
+          grid: {
+            display: true,
+            color: '#f0f0f0'
           }
         }
-      });
-
-      function addDataPoint(newTime, newState) {
-        stateChart.data.labels.push(newTime);
-        stateChart.data.datasets.forEach((dataset) => {
-          dataset.data.push(newState === "pedestrians_cross" ? 1 : 0);
-        });
-        
-        if (stateChart.data.labels.length > 20) {
-          stateChart.data.labels.shift();
-          stateChart.data.datasets.forEach((dataset) => {
-            dataset.data.shift();
-          });
-        }
-        
-        stateChart.update();
-      }
-
-      // Get HTML elements
-      const redLight = document.getElementById('redLight');
-      const greenLight = document.getElementById('greenLight');
-      const buzzerContainer = document.getElementById('buzzerContainer');
-      const buzzerIcon = document.getElementById('buzzerIcon');
-      const statusBadge = document.getElementById('statusBadge');
-      const timeRemaining = document.getElementById('timeRemaining');
-      const manualCrossingBtn = document.getElementById('manualCrossingBtn');
-      const autoModeSwitch = document.getElementById('autoModeSwitch');
-      const modeLabel = document.getElementById('modeLabel');
-      const currentMode = document.getElementById('currentMode');
-      const lastButtonPress = document.getElementById('lastButtonPress');
-      const systemUptime = document.getElementById('systemUptime');
-      const currentDate = document.getElementById('currentDate');
-      const connectionStatus = document.getElementById('connectionStatus');
-
-      // Variables to track system state
-      let startTime = new Date();
-      let currentStateStartTime = new Date();
-      let countdown = null;
-      let countdownValue = 0;
-      
-      // Initialize current date
-      currentDate.textContent = new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-
-      function updateTimeRemaining() {
-        if (countdownValue > 0) {
-          countdownValue--;
-          timeRemaining.textContent = countdownValue + " sec";
-        } else {
-          timeRemaining.textContent = "--";
-          clearInterval(countdown);
-          countdown = null;
-        }
-      }
-
-      function setRedLightOn() {
-        redLight.classList.add('active');
-        greenLight.classList.remove('active');
-      }
-
-      function setGreenLightOn() {
-        greenLight.classList.add('active');
-        redLight.classList.remove('active');
-      }
-
-      function setBuzzerOn() {
-        buzzerContainer.classList.add('active');
-        buzzerIcon.classList.remove('fa-volume-mute');
-        buzzerIcon.classList.add('fa-volume-up');
-      }
-
-      function setBuzzerOff() {
-        buzzerContainer.classList.remove('active');
-        buzzerIcon.classList.remove('fa-volume-up');
-        buzzerIcon.classList.add('fa-volume-mute');
-      }
-
-      function updateSystemState(state) {
-        if (state === "pedestrians_cross") {
-          statusBadge.textContent = "Pedestrians Cross";
-          statusBadge.classList.remove('cars-go');
-          statusBadge.classList.add('pedestrians-cross');
-          statusBadge.classList.add('fade-in');
-          
-          setGreenLightOn();
-          setBuzzerOn();
-          
-          currentStateStartTime = new Date();
-          countdownValue = 10;
-          timeRemaining.textContent = countdownValue + " sec";
-          
-          if (countdown) {
-            clearInterval(countdown);
-          }
-          countdown = setInterval(updateTimeRemaining, 1000);
-        } else {
-          statusBadge.textContent = "Cars Go";
-          statusBadge.classList.remove('pedestrians-cross');
-          statusBadge.classList.add('cars-go');
-          statusBadge.classList.add('fade-in');
-          
-          setRedLightOn();
-          setBuzzerOff();
-          
-          if (autoModeSwitch.checked && countdown === null) {
-            currentStateStartTime = new Date();
-            countdownValue = 30;
-            timeRemaining.textContent = countdownValue + " sec";
-            countdown = setInterval(updateTimeRemaining, 1000);
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => context.raw === 0 ? "Cars Go" : "Pedestrians Cross"
           }
         }
-        
-        setTimeout(() => {
-          statusBadge.classList.remove('fade-in');
-        }, 500);
-        
-        const uptimeSeconds = Math.floor((new Date() - startTime) / 1000);
-        const hours = Math.floor(uptimeSeconds / 3600);
-        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-        const seconds = uptimeSeconds % 60;
-        systemUptime.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
       }
+    }
+  });
 
-      // MQTT Configuration
-      const broker = "test.mosquitto.org";
-      const port = 8081; // WebSocket with SSL
-      const clientId = "dashboard_" + Math.random().toString(16).substr(2, 8);
-      const topicData = "pedestrian_crossing/data";
-      const topicControl = "pedestrian_crossing/control";
+  function addDataPoint(newTime, newState) {
+    stateChart.data.labels.push(newTime);
+    stateChart.data.datasets.forEach(dataset => {
+      dataset.data.push(newState === "pedestrians_cross" ? 1 : 0);
+    });
+    if (stateChart.data.labels.length > 20) {
+      stateChart.data.labels.shift();
+      stateChart.data.datasets.forEach(dataset => dataset.data.shift());
+    }
+    stateChart.update();
+  }
 
-      // Initialize MQTT Client
-      const client = new Paho.MQTT.Client(broker, port, clientId);
-      client.onConnectionLost = onConnectionLost;
-      client.onMessageArrived = onMessageArrived;
+  // Get HTML elements
+  const redLight = document.getElementById('redLight');
+  const greenLight = document.getElementById('greenLight');
+  const buzzerContainer = document.getElementById('buzzerContainer');
+  const buzzerIcon = document.getElementById('buzzerIcon');
+  const statusBadge = document.getElementById('statusBadge');
+  const timeRemaining = document.getElementById('timeRemaining');
+  const manualCrossingBtn = document.getElementById('manualCrossingBtn');
+  const autoModeSwitch = document.getElementById('autoModeSwitch');
+  const modeLabel = document.getElementById('modeLabel');
+  const currentMode = document.getElementById('currentMode');
+  const lastButtonPress = document.getElementById('lastButtonPress');
+  const systemUptime = document.getElementById('systemUptime');
+  const currentDate = document.getElementById('currentDate');
+  const connectionStatus = document.getElementById('connectionStatus');
 
-      // Connect to MQTT Broker
-      client.connect({
-        onSuccess: onConnect,
-        useSSL: true,
-        onFailure: (err) => {
-          console.error("MQTT Connection Failed:", err);
-          connectionStatus.textContent = "Error: " + err.errorMessage;
-          connectionStatus.style.color = "red";
-        }
-      });
+  let startTime = new Date();
+  let countdown = null;
+  let countdownValue = 0;
 
-      function onConnect() {
-        connectionStatus.textContent = "Connected";
-        connectionStatus.style.color = "green";
-        client.subscribe(topicData, {
-          onSuccess: () => {
-            console.log("Subscribed to " + topicData);
-          },
-          onFailure: (err) => {
-            console.error("Subscription Failed:", err);
-          }
-        });
-        console.log("Connected to " + broker + " on port " + port);
-      }
+  currentDate.textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
 
-      function onConnectionLost(responseObject) {
-        connectionStatus.textContent = "Disconnected";
-        connectionStatus.style.color = "red";
-        if (responseObject.errorCode !== 0) {
-          console.log("Connection lost: " + responseObject.errorMessage);
-        }
-      }
+  function updateTimeRemaining() {
+    if (countdownValue > 0) {
+      countdownValue--;
+      timeRemaining.textContent = countdownValue + " sec";
+    } else {
+      timeRemaining.textContent = "--";
+      clearInterval(countdown);
+      countdown = null;
+    }
+  }
 
-      function onMessageArrived(message) {
-        try {
-          const telemetry = JSON.parse(message.payloadString);
-          console.log("Received: ", telemetry);
+  function setRedLightOn() {
+    redLight.classList.add('active');
+    greenLight.classList.remove('active');
+  }
 
-          const state = telemetry.redLedOn ? "cars_go" : "pedestrians_cross";
-          addDataPoint(new Date(), state);
-          updateSystemState(state);
+  function setGreenLightOn() {
+    greenLight.classList.add('active');
+    redLight.classList.remove('active');
+  }
 
-          currentMode.textContent = telemetry.mode;
-          autoModeSwitch.checked = telemetry.mode === "automatic";
-          modeLabel.textContent = telemetry.mode === "automatic" ? "Automatic Mode" : "Manual Mode";
-          lastButtonPress.textContent = telemetry.lastButtonPress;
+  function setBuzzerOn() {
+    buzzerContainer.classList.add('active');
+    buzzerIcon.classList.remove('fa-volume-mute');
+    buzzerIcon.classList.add('fa-volume-up');
+  }
 
-          const uptimeSeconds = Math.floor(telemetry.systemUptime / 1000);
-          const hours = Math.floor(uptimeSeconds / 3600);
-          const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-          const seconds = uptimeSeconds % 60;
-          systemUptime.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-          currentDate.textContent = telemetry.currentDate;
-        } catch (e) {
-          console.error("Error parsing MQTT message:", e);
-        }
-      }
+  function setBuzzerOff() {
+    buzzerContainer.classList.remove('active');
+    buzzerIcon.classList.remove('fa-volume-up');
+    buzzerIcon.classList.add('fa-volume-mute');
+  }
 
-      function sendCommand(command) {
-        const message = new Paho.MQTT.Message(command);
-        message.destinationName = topicControl;
-        client.send(message);
-        console.log("Sent: " + command + " to " + topicControl);
-      }
+  function updateSystemState(state) {
+    if (state === "pedestrians_cross") {
+      statusBadge.textContent = "Pedestrians Cross";
+      statusBadge.classList.remove('cars-go');
+      statusBadge.classList.add('pedestrians-cross', 'fade-in');
+      setGreenLightOn();
+      setBuzzerOn();
+      countdownValue = 10;
+    } else {
+      statusBadge.textContent = "Cars Go";
+      statusBadge.classList.remove('pedestrians-cross');
+      statusBadge.classList.add('cars-go', 'fade-in');
+      setRedLightOn();
+      setBuzzerOff();
+      if (autoModeSwitch.checked) countdownValue = 30;
+    }
 
-      // Send manual crossing request
-      manualCrossingBtn.onclick = function() {
-        manualCrossingBtn.classList.add('btn-pressed');
-        setTimeout(() => {
-          manualCrossingBtn.classList.remove('btn-pressed');
-        }, 300);
-        
-        lastButtonPress.textContent = new Date().toLocaleTimeString();
-        sendCommand(JSON.stringify({"command": "button_press"}));
-      };
-      
-      // Toggle automatic mode
-      autoModeSwitch.onchange = function() {
-        if (autoModeSwitch.checked) {
-          modeLabel.textContent = "Automatic Mode";
-          currentMode.textContent = "Automatic";
-          sendCommand(JSON.stringify({"command": "mode_auto"}));
-        } else {
-          modeLabel.textContent = "Manual Mode";
-          currentMode.textContent = "Manual";
-          sendCommand(JSON.stringify({"command": "mode_manual"}));
-        }
-      };
+    if (countdown) clearInterval(countdown);
+    if (countdownValue > 0) {
+      timeRemaining.textContent = countdownValue + " sec";
+      countdown = setInterval(updateTimeRemaining, 1000);
+    }
 
-      // Initialize system state
-      updateSystemState("cars_go");
+    setTimeout(() => statusBadge.classList.remove('fade-in'), 500);
+    const uptimeSeconds = Math.floor((new Date() - startTime) / 1000);
+    const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (uptimeSeconds % 60).toString().padStart(2, '0');
+    systemUptime.textContent = `${h}:${m}:${s}`;
+  }
 
-      // Add some initial data points for the chart
-      const now = new Date();
-      addDataPoint(new Date(now.getTime() - 60000), "cars_go");
-      addDataPoint(new Date(now.getTime() - 50000), "pedestrians_cross");
-      addDataPoint(new Date(now.getTime() - 40000), "cars_go");
-      addDataPoint(new Date(now.getTime() - 10000), "cars_go");
-    </script>
+  const nodeRedUrl = "https://team-ayat-nour-hachmi-aynour-ee321dbe.flowfuse.cloud/api/control";
+
+  function sendCommand(commandObject) {
+    fetch(nodeRedUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(commandObject)
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("Node-RED Response:", data);
+      connectionStatus.textContent = "Connected";
+      connectionStatus.style.color = "green";
+    })
+    .catch(err => {
+      console.error("HTTP Error:", err);
+      connectionStatus.textContent = "Error: " + err.message;
+      connectionStatus.style.color = "red";
+    });
+  }
+
+  manualCrossingBtn.onclick = () => {
+    manualCrossingBtn.classList.add("btn-pressed");
+    setTimeout(() => manualCrossingBtn.classList.remove("btn-pressed"), 300);
+    lastButtonPress.textContent = new Date().toLocaleTimeString();
+    sendCommand({ command: "button_press" });
+  };
+
+  autoModeSwitch.onchange = () => {
+    if (autoModeSwitch.checked) {
+      modeLabel.textContent = "Automatic Mode";
+      currentMode.textContent = "Automatic";
+      sendCommand({ command: "mode_auto" });
+    } else {
+      modeLabel.textContent = "Manual Mode";
+      currentMode.textContent = "Manual";
+      sendCommand({ command: "mode_manual" });
+    }
+  };
+
+  // Initialize system state
+  updateSystemState("cars_go");
+  const now = new Date();
+  addDataPoint(new Date(now.getTime() - 60000), "cars_go");
+  addDataPoint(new Date(now.getTime() - 50000), "pedestrians_cross");
+  addDataPoint(new Date(now.getTime() - 40000), "cars_go");
+  addDataPoint(new Date(now.getTime() - 10000), "cars_go");
+</script>
+
   </body>
 </html>
